@@ -32,13 +32,13 @@ ge.mysky.backend
    ```sh
    ./mvnw spring-boot:run
    ```
-   The app listens on `http://localhost:8080`. Health check: `/actuator/health`.
+   The app listens on `http://localhost:8081`. Health check: `/actuator/health`.
 
 ## Environment variables
 
 | Variable             | Default                                        | Notes                                     |
 |----------------------|------------------------------------------------|-------------------------------------------|
-| `DATABASE_URL`       | `jdbc:postgresql://localhost:5432/mysky`       | JDBC URL                                  |
+| `DATABASE_URL`       | `jdbc:postgresql://localhost:5433/mysky`       | JDBC URL (host port 5433, see docker-compose) |
 | `DATABASE_USER`      | `mysky`                                        |                                           |
 | `DATABASE_PASSWORD`  | `mysky`                                        |                                           |
 | `JWT_SECRET`         | dev placeholder                                | **Must** be overridden in production      |

@@ -8,7 +8,8 @@ services:
       POSTGRES_USER: mysky
       POSTGRES_PASSWORD: mysky
     ports:
-      - "5432:5432"
+      # Host 5433 -> container 5432, because host :5432 is taken by another project
+      - "5433:5432"
     volumes:
       - mysky_pgdata:/var/lib/postgresql/data
     healthcheck:

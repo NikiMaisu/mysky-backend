@@ -2,7 +2,7 @@ spring:
   application:
     name: mysky-backend
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/mysky}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/mysky}
     username: ${DATABASE_USER:mysky}
     password: ${DATABASE_PASSWORD:mysky}
     driver-class-name: org.postgresql.Driver
@@ -20,7 +20,8 @@ spring:
     baseline-on-migrate: true
 
 server:
-  port: ${SERVER_PORT:8080}
+  # Default 8081 because host :8080 is taken by another local project
+  port: ${SERVER_PORT:8081}
 
 mysky:
   jwt:
