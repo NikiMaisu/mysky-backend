@@ -24,9 +24,9 @@ ge.mysky.backend
 
 ## Running locally
 
-1. Start Postgres (use the `docker-compose.yml` in the parent directory):
+1. Start Postgres:
    ```sh
-   docker compose -f ../docker-compose.yml up -d postgres
+   docker compose up -d postgres
    ```
 2. Run the app:
    ```sh
