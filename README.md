@@ -32,7 +32,7 @@ ge.mysky.backend
    ```sh
    ./mvnw spring-boot:run
    ```
-   The app listens on `http://localhost:8081`. Health check: `/actuator/health`.
+   The app listens on `http://localhost:8089`. Health check: `/actuator/health`.
 
 ## Environment variables
 
@@ -42,7 +42,7 @@ ge.mysky.backend
 | `DATABASE_USER`      | `mysky`                                        |                                           |
 | `DATABASE_PASSWORD`  | `mysky`                                        |                                           |
 | `JWT_SECRET`         | dev placeholder                                | **Must** be overridden in production      |
-| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000`                      | Comma-separated list                      |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:4000`                      | Comma-separated list                      |
 
 ## Tests
 

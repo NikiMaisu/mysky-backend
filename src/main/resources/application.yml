@@ -20,8 +20,9 @@ spring:
     baseline-on-migrate: true
 
 server:
-  # Default 8081 because host :8080 is taken by another local project
-  port: ${SERVER_PORT:8081}
+  # Default 8089 because :8080 and :8081 are both taken by other local
+  # projects (itip-team09 + cloudnative-bcs-group1 mongo-express)
+  port: ${SERVER_PORT:8089}
 
 mysky:
   jwt:
@@ -30,7 +31,11 @@ mysky:
     refresh-token-ttl-days: ${JWT_REFRESH_TTL_DAYS:14}
     issuer: mysky-backend
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4000}
+  admin:
+    email: ${MYSKY_ADMIN_EMAIL:admin@mysky.ge}
+    name: ${MYSKY_ADMIN_NAME:mysky admin}
+    password: ${MYSKY_ADMIN_PASSWORD:admin}
 
 management:
   endpoints:
