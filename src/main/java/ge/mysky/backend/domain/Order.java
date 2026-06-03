@@ -90,6 +90,9 @@ public class Order {
     @Column(name = "flat_added_min", nullable = false)
     private int flatAddedMinutes;
 
+    @Column(name = "finish_overridden", nullable = false)
+    private boolean finishOverridden;
+
     @Column(name = "total_min", nullable = false)
     private int totalMinutes;
 

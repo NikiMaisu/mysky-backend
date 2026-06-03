@@ -5,5 +5,6 @@ import java.util.List;
 
 public record TeamRequest(
         @NotBlank String name,
-        List<Long> memberIds) {
+        List<Long> memberIds,
+        WorkScheduleDto schedule) {
 }

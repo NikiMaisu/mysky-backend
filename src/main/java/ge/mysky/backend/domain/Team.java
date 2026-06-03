@@ -42,6 +42,16 @@ public class Team {
     @Builder.Default
     private boolean active = true;
 
+    // Optional per-team schedule override (all null = inherit the global schedule).
+    @Column(name = "work_days")
+    private Short workDays;
+
+    @Column(name = "work_start")
+    private java.time.LocalTime workStart;
+
+    @Column(name = "work_end")
+    private java.time.LocalTime workEnd;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "team_members",

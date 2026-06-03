@@ -33,6 +33,7 @@ public class OrderService {
     private final TeamRepository teams;
     private final GraniteService granite;
     private final OrderCalculationService calc;
+    private final WorkScheduleService workSchedule;
 
     public OrderService(
             OrderRepository orders,
@@ -41,7 +42,8 @@ public class OrderService {
             AddonInstanceRepository addons,
             TeamRepository teams,
             GraniteService granite,
-            OrderCalculationService calc) {
+            OrderCalculationService calc,
+            WorkScheduleService workSchedule) {
         this.orders = orders;
         this.materials = materials;
         this.fixtures = fixtures;
@@ -49,6 +51,7 @@ public class OrderService {
         this.teams = teams;
         this.granite = granite;
         this.calc = calc;
+        this.workSchedule = workSchedule;
     }
 
     @Transactional(readOnly = true)
@@ -109,7 +112,6 @@ public class OrderService {
         order.setStartAt(req.startAt());
         order.setNotes(blankToNull(req.notes()));
         order.setSquareMeters(req.squareMeters());
-        order.setFlatAddedMinutes(req.flatAddedMinutes() == null ? 0 : req.flatAddedMinutes());
 
         var material = materials.findById(req.materialId())
                 .orElseThrow(() -> new NotFoundException("Material " + req.materialId() + " not found"));
@@ -118,8 +120,9 @@ public class OrderService {
         order.setMaterialPricePerM2(material.getPricePerM2());
         order.setMaterialTimePerM2Minutes(material.getTimePerM2Minutes());
 
+        ge.mysky.backend.domain.Team team = null;
         if (req.teamId() != null) {
-            var team = teams.findById(req.teamId())
+            team = teams.findById(req.teamId())
                     .orElseThrow(() -> new NotFoundException("Team " + req.teamId() + " not found"));
             order.setTeamId(team.getId());
             order.setTeamName(team.getName());
@@ -127,6 +130,8 @@ public class OrderService {
             order.setTeamId(null);
             order.setTeamName(null);
         }
+        var schedule = workSchedule.resolve(team);
+        order.setFlatAddedMinutes(toMinutes(req.flatAddedValue(), req.flatAddedUnit(), schedule));
 
         order.setGraniteEnabled(req.graniteEnabled());
         if (req.graniteEnabled()) {
@@ -173,8 +178,29 @@ public class OrderService {
             }
         }
 
-        order.setFinishAt(req.finishAt());
-        calc.apply(order, req.finishAt() != null);
+        var totals = calc.compute(order);
+        order.setTotalMinutes(totals.minutes());
+        order.setTotalCost(totals.cost());
+
+        if (req.finishOverridden() && req.finishAt() != null) {
+            order.setFinishOverridden(true);
+            order.setFinishAt(req.finishAt());
+        } else {
+            order.setFinishOverridden(false);
+            order.setFinishAt(workSchedule.computeFinish(order.getStartAt(), totals.minutes(), schedule));
+        }
+    }
+
+    private static int toMinutes(java.math.BigDecimal value, ge.mysky.backend.dto.TimeUnit unit,
+                                 WorkScheduleService.Resolved schedule) {
+        if (value == null) return 0;
+        long perUnit = switch (unit == null ? ge.mysky.backend.dto.TimeUnit.MINUTES : unit) {
+            case MINUTES -> 1L;
+            case HOURS -> 60L;
+            case DAYS -> schedule.workdayMinutes();
+        };
+        return value.multiply(java.math.BigDecimal.valueOf(perUnit))
+                .setScale(0, java.math.RoundingMode.HALF_UP).intValueExact();
     }
 
     private static String blankToNull(String s) {

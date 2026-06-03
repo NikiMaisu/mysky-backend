@@ -10,10 +10,9 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
-    properties:
-      hibernate:
-        jdbc:
-          time_zone: UTC
+    # NB: do not set hibernate.jdbc.time_zone — it shifts TIME (LocalTime) columns
+    # like the work-schedule hours. TIMESTAMPTZ + OffsetDateTime carry their own
+    # offset, so instants are preserved without it.
   flyway:
     enabled: true
     locations: classpath:db/migration

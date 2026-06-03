@@ -41,6 +41,7 @@ public class TeamService {
                 .active(true)
                 .members(resolveMembers(req.memberIds()))
                 .build();
+        applySchedule(team, req.schedule());
         return teams.save(team);
     }
 
@@ -51,7 +52,22 @@ public class TeamService {
         if (req.memberIds() != null) {
             team.setMembers(resolveMembers(req.memberIds()));
         }
+        applySchedule(team, req.schedule());
         return teams.save(team);
+    }
+
+    private void applySchedule(Team team, ge.mysky.backend.dto.WorkScheduleDto schedule) {
+        if (schedule == null) {
+            team.setWorkDays(null);
+            team.setWorkStart(null);
+            team.setWorkEnd(null);
+            return;
+        }
+        var start = java.time.LocalTime.parse(schedule.start());
+        var end = java.time.LocalTime.parse(schedule.end());
+        team.setWorkDays(ge.mysky.backend.service.WorkScheduleService.validateAndPack(schedule.days(), start, end));
+        team.setWorkStart(start);
+        team.setWorkEnd(end);
     }
 
     @Transactional

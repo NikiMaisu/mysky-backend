@@ -32,6 +32,7 @@ public record OrderResponse(
         int flatAddedMinutes,
         int totalMinutes,
         BigDecimal totalCost,
+        boolean finishOverridden,
         OrderStatus status,
         String notes,
         List<FixtureLine> fixtures,
@@ -80,7 +81,7 @@ public record OrderResponse(
                 o.getMaterialId(), o.getMaterialName(), o.getMaterialPricePerM2(), o.getMaterialTimePerM2Minutes(),
                 o.getSquareMeters(), o.isGraniteEnabled(), o.getPerimeter(),
                 o.getGranitePricePerMeter(), o.getGraniteTimePerMeterMinutes(),
-                o.getFlatAddedMinutes(), o.getTotalMinutes(), o.getTotalCost(), o.getStatus(), o.getNotes(),
+                o.getFlatAddedMinutes(), o.getTotalMinutes(), o.getTotalCost(), o.isFinishOverridden(), o.getStatus(), o.getNotes(),
                 o.getFixtures().stream().map(FixtureLine::from).toList(),
                 o.getAddons().stream().map(AddonLine::from).toList());
     }

@@ -56,16 +56,6 @@ public class OrderCalculationService {
         return new Totals(totalMinutes, cost.setScale(2, RoundingMode.HALF_UP));
     }
 
-    /** Applies computed totals to the order and derives finish time when not overridden. */
-    public void apply(Order o, boolean keepFinishOverride) {
-        var totals = compute(o);
-        o.setTotalMinutes(totals.minutes());
-        o.setTotalCost(totals.cost());
-        if (!keepFinishOverride || o.getFinishAt() == null) {
-            o.setFinishAt(o.getStartAt().plusMinutes(totals.minutes()));
-        }
-    }
-
     private static BigDecimal nz(BigDecimal v) {
         return v == null ? BigDecimal.ZERO : v;
     }
