@@ -3,12 +3,17 @@ package ge.mysky.backend.controller;
 import ge.mysky.backend.domain.OrderStatus;
 import ge.mysky.backend.dto.OrderRequest;
 import ge.mysky.backend.dto.OrderResponse;
+import ge.mysky.backend.service.ExportService;
 import ge.mysky.backend.service.OrderService;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,9 +31,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class OrderController {
 
     private final OrderService service;
+    private final ExportService exportService;
 
-    public OrderController(OrderService service) {
+    public OrderController(OrderService service, ExportService exportService) {
         this.service = service;
+        this.exportService = exportService;
     }
 
     @GetMapping
@@ -38,6 +45,27 @@ public class OrderController {
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) OrderStatus status) {
         return service.list(from, to, teamId, status);
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<byte[]> export(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
+            @RequestParam(required = false) Long teamId,
+            @RequestParam(required = false) OrderStatus status,
+            @RequestParam(defaultValue = "csv") String format) {
+        var orders = service.list(from, to, teamId, status);
+        boolean xlsx = "xlsx".equalsIgnoreCase(format);
+        byte[] body = xlsx ? exportService.xlsx(orders) : exportService.csv(orders);
+        var contentType = xlsx
+                ? MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                : MediaType.parseMediaType("text/csv; charset=UTF-8");
+        var filename = "orders-" + LocalDate.now() + (xlsx ? ".xlsx" : ".csv");
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(contentType)
+                .body(body);
     }
 
     @GetMapping("/{id}")
