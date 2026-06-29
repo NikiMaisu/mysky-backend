@@ -14,7 +14,7 @@ import org.springframework.http.MediaType;
 class AuthControllerTest extends AbstractIntegrationTest {
 
     private String login(String email, String pw) throws Exception {
-        return json.writeValueAsString(Map.of("email", email, "password", pw));
+        return json.writeValueAsString(Map.of("identifier", email, "password", pw));
     }
 
     @Test

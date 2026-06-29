@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 
 public record WorkerCreateRequest(
         @NotBlank String name,
-        @NotBlank @Email String email,
+        @Email String email,
+        String phone,
         @NotBlank @Size(min = 6) String password) {
 }

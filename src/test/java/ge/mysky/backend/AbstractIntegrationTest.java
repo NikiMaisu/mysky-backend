@@ -27,7 +27,7 @@ public abstract class AbstractIntegrationTest {
     protected ObjectMapper json;
 
     protected String tokenFor(String email, String password) throws Exception {
-        var body = json.writeValueAsString(Map.of("email", email, "password", password));
+        var body = json.writeValueAsString(Map.of("identifier", email, "password", password));
         var res = mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk())
                 .andReturn();

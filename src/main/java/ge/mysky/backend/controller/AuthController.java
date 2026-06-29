@@ -41,12 +41,12 @@ public class AuthController {
     public AuthResponse login(@Valid @RequestBody LoginRequest req) {
         try {
             var auth = authManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(req.email(), req.password()));
+                    new UsernamePasswordAuthenticationToken(req.identifier(), req.password()));
             var principal = (MyskyUserDetails) auth.getPrincipal();
             return buildResponse(principal);
         } catch (BadCredentialsException e) {
             throw new ResponseStatusException(
-                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Invalid email or password");
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
     }
 

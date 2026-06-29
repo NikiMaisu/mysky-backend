@@ -6,9 +6,10 @@ public record WorkerResponse(
         Long id,
         String name,
         String email,
+        String phone,
         boolean active) {
 
     public static WorkerResponse from(User u) {
-        return new WorkerResponse(u.getId(), u.getName(), u.getEmail(), u.isActive());
+        return new WorkerResponse(u.getId(), u.getName(), u.getEmail(), u.getPhone(), u.isActive());
     }
 }

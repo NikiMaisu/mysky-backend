@@ -19,9 +19,10 @@ public class MyskyUserDetailsService implements UserDetailsService {
     }
 
     @Override
-    public MyskyUserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        var user = users.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new UsernameNotFoundException("No user with email " + email));
+    public MyskyUserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
+        var user = users.findByEmailIgnoreCase(identifier)
+                .or(() -> users.findByPhone(identifier))
+                .orElseThrow(() -> new UsernameNotFoundException("No user with email/phone " + identifier));
         return new MyskyUserDetails(user);
     }
 
@@ -45,7 +46,7 @@ public class MyskyUserDetailsService implements UserDetailsService {
 
         @Override
         public String getUsername() {
-            return user.getEmail();
+            return user.getEmail() != null ? user.getEmail() : user.getPhone();
         }
     }
 }
