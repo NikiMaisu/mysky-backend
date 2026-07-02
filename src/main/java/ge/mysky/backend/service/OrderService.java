@@ -3,6 +3,7 @@ package ge.mysky.backend.service;
 import ge.mysky.backend.domain.Order;
 import ge.mysky.backend.domain.OrderAddon;
 import ge.mysky.backend.domain.OrderFixture;
+import ge.mysky.backend.domain.OrderMaterial;
 import ge.mysky.backend.domain.OrderStatus;
 import ge.mysky.backend.dto.OrderRequest;
 import ge.mysky.backend.dto.OrderResponse;
@@ -11,6 +12,7 @@ import ge.mysky.backend.repository.FixtureRepository;
 import ge.mysky.backend.repository.MaterialRepository;
 import ge.mysky.backend.repository.OrderRepository;
 import ge.mysky.backend.repository.TeamRepository;
+import ge.mysky.backend.web.ConflictException;
 import ge.mysky.backend.web.NotFoundException;
 import jakarta.persistence.criteria.Predicate;
 import java.time.OffsetDateTime;
@@ -76,6 +78,14 @@ public class OrderService {
     @Transactional
     public OrderResponse create(OrderRequest req) {
         var order = new Order();
+        if (req.orderNumber() != null) {
+            if (orders.existsByOrderNumber(req.orderNumber())) {
+                throw new ConflictException("Order number " + req.orderNumber() + " already exists");
+            }
+            order.setOrderNumber(req.orderNumber());
+        } else {
+            order.setOrderNumber(orders.nextOrderNumber());
+        }
         order.setStatus(req.status() == null ? OrderStatus.QUOTED : req.status());
         applyRequest(order, req);
         return OrderResponse.from(orders.save(order));
@@ -84,7 +94,14 @@ public class OrderService {
     @Transactional
     public OrderResponse update(Long id, OrderRequest req) {
         var order = load(id);
+        if (req.orderNumber() != null && !req.orderNumber().equals(order.getOrderNumber())) {
+            if (orders.existsByOrderNumber(req.orderNumber())) {
+                throw new ConflictException("Order number " + req.orderNumber() + " already exists");
+            }
+            order.setOrderNumber(req.orderNumber());
+        }
         if (req.status() != null) order.setStatus(req.status());
+        order.getMaterials().clear();
         order.getFixtures().clear();
         order.getAddons().clear();
         applyRequest(order, req);
@@ -111,14 +128,20 @@ public class OrderService {
         order.setAddress(blankToNull(req.address()));
         order.setStartAt(req.startAt());
         order.setNotes(blankToNull(req.notes()));
-        order.setSquareMeters(req.squareMeters());
 
-        var material = materials.findById(req.materialId())
-                .orElseThrow(() -> new NotFoundException("Material " + req.materialId() + " not found"));
-        order.setMaterialId(material.getId());
-        order.setMaterialName(material.getName());
-        order.setMaterialPricePerM2(material.getPricePerM2());
-        order.setMaterialTimePerM2Minutes(material.getTimePerM2Minutes());
+        if (req.materials() != null) {
+            for (var line : req.materials()) {
+                var mat = materials.findById(line.materialId())
+                        .orElseThrow(() -> new NotFoundException("Material " + line.materialId() + " not found"));
+                var om = new OrderMaterial();
+                om.setMaterialId(mat.getId());
+                om.setName(mat.getName());
+                om.setUnitPricePerM2(mat.getPricePerM2());
+                om.setUnitTimeMinutes(mat.getTimePerM2Minutes());
+                om.setSquareMeters(line.squareMeters());
+                order.addMaterial(om);
+            }
+        }
 
         ge.mysky.backend.domain.Team team = null;
         if (req.teamId() != null) {

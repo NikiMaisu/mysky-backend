@@ -3,6 +3,7 @@ package ge.mysky.backend.service;
 import ge.mysky.backend.domain.Order;
 import ge.mysky.backend.domain.OrderAddon;
 import ge.mysky.backend.domain.OrderFixture;
+import ge.mysky.backend.domain.OrderMaterial;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import org.springframework.stereotype.Service;
@@ -27,10 +28,14 @@ public class OrderCalculationService {
     public record Totals(int minutes, BigDecimal cost) {}
 
     public Totals compute(Order o) {
-        var sqm = nz(o.getSquareMeters());
+        BigDecimal minutes = BigDecimal.ZERO;
+        BigDecimal cost = BigDecimal.ZERO;
 
-        BigDecimal minutes = nz(o.getMaterialTimePerM2Minutes()).multiply(sqm);
-        BigDecimal cost = nz(o.getMaterialPricePerM2()).multiply(sqm);
+        for (OrderMaterial m : o.getMaterials()) {
+            var sqm = nz(m.getSquareMeters());
+            minutes = minutes.add(nz(m.getUnitTimeMinutes()).multiply(sqm));
+            cost = cost.add(nz(m.getUnitPricePerM2()).multiply(sqm));
+        }
 
         if (o.isGraniteEnabled()) {
             var perimeter = nz(o.getPerimeter());

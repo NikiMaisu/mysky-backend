@@ -7,6 +7,7 @@ import ge.mysky.backend.domain.FixtureUnit;
 import ge.mysky.backend.domain.Order;
 import ge.mysky.backend.domain.OrderAddon;
 import ge.mysky.backend.domain.OrderFixture;
+import ge.mysky.backend.domain.OrderMaterial;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
@@ -16,12 +17,19 @@ class OrderCalculationServiceTest {
 
     private Order baseOrder() {
         var o = new Order();
-        o.setMaterialPricePerM2(new BigDecimal("75.00"));
-        o.setMaterialTimePerM2Minutes(new BigDecimal("15.00"));
-        o.setSquareMeters(new BigDecimal("20"));
+        var m = new OrderMaterial();
+        m.setName("m");
+        m.setUnitPricePerM2(new BigDecimal("75.00"));
+        m.setUnitTimeMinutes(new BigDecimal("15.00"));
+        m.setSquareMeters(new BigDecimal("20"));
+        o.addMaterial(m);
         o.setGraniteEnabled(false);
         o.setFlatAddedMinutes(0);
         return o;
+    }
+
+    private static OrderMaterial firstMaterial(Order o) {
+        return o.getMaterials().get(0);
     }
 
     private OrderFixture fixture(String cost, String time, String qty) {
@@ -54,7 +62,7 @@ class OrderCalculationServiceTest {
     @Test
     void zeroSquareMeters() {
         var o = baseOrder();
-        o.setSquareMeters(BigDecimal.ZERO);
+        firstMaterial(o).setSquareMeters(BigDecimal.ZERO);
         o.setFlatAddedMinutes(45);
         var totals = calc.compute(o);
         assertThat(totals.cost()).isEqualByComparingTo("0.00");
@@ -91,7 +99,7 @@ class OrderCalculationServiceTest {
     @Test
     void multipleFixtures() {
         var o = baseOrder();
-        o.setSquareMeters(BigDecimal.ZERO);
+        firstMaterial(o).setSquareMeters(BigDecimal.ZERO);
         o.addFixture(fixture("10", "4", "3")); // 30 cost, 12 min
         o.addFixture(fixture("5", "2", "2")); // 10 cost, 4 min
         var totals = calc.compute(o);
@@ -102,9 +110,10 @@ class OrderCalculationServiceTest {
     @Test
     void fractionalMinutesRoundHalfUp() {
         var o = baseOrder();
-        o.setMaterialTimePerM2Minutes(new BigDecimal("2.5"));
-        o.setSquareMeters(new BigDecimal("3")); // 7.5 min -> rounds to 8
-        o.setMaterialPricePerM2(BigDecimal.ZERO);
+        var m = firstMaterial(o);
+        m.setUnitTimeMinutes(new BigDecimal("2.5"));
+        m.setSquareMeters(new BigDecimal("3")); // 7.5 min -> rounds to 8
+        m.setUnitPricePerM2(BigDecimal.ZERO);
         var totals = calc.compute(o);
         assertThat(totals.minutes()).isEqualTo(8);
     }

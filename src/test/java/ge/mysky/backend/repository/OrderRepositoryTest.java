@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ge.mysky.backend.AbstractIntegrationTest;
 import ge.mysky.backend.domain.Order;
+import ge.mysky.backend.domain.OrderMaterial;
 import ge.mysky.backend.domain.OrderStatus;
 import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
@@ -22,13 +23,16 @@ class OrderRepositoryTest extends AbstractIntegrationTest {
 
     private Order minimalOrder(String client, OrderStatus status, OffsetDateTime start) {
         var o = new Order();
+        o.setOrderNumber(orders.nextOrderNumber());
         o.setClientName(client);
         o.setStartAt(start);
         o.setFinishAt(start.plusHours(2));
-        o.setMaterialName("Snapshot material");
-        o.setMaterialPricePerM2(new BigDecimal("10.00"));
-        o.setMaterialTimePerM2Minutes(new BigDecimal("5.00"));
-        o.setSquareMeters(new BigDecimal("10"));
+        var m = new OrderMaterial();
+        m.setName("Snapshot material");
+        m.setUnitPricePerM2(new BigDecimal("10.00"));
+        m.setUnitTimeMinutes(new BigDecimal("5.00"));
+        m.setSquareMeters(new BigDecimal("10"));
+        o.addMaterial(m);
         o.setGraniteEnabled(false);
         o.setFlatAddedMinutes(0);
         o.setTotalMinutes(50);

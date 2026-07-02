@@ -10,14 +10,13 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 public record OrderRequest(
+        Long orderNumber,
         @NotBlank String clientName,
         String clientPhone,
         String address,
         @NotNull OffsetDateTime startAt,
         OffsetDateTime finishAt,
         Long teamId,
-        @NotNull Long materialId,
-        @NotNull @PositiveOrZero BigDecimal squareMeters,
         boolean graniteEnabled,
         @PositiveOrZero BigDecimal perimeter,
         @PositiveOrZero BigDecimal flatAddedValue,
@@ -25,8 +24,13 @@ public record OrderRequest(
         boolean finishOverridden,
         OrderStatus status,
         String notes,
+        @Valid List<MaterialLine> materials,
         @Valid List<FixtureLine> fixtures,
         @Valid List<AddonLine> addons) {
+
+    public record MaterialLine(
+            @NotNull Long materialId,
+            @NotNull @PositiveOrZero BigDecimal squareMeters) {}
 
     public record FixtureLine(
             @NotNull Long fixtureId,

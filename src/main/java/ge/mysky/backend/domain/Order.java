@@ -21,8 +21,6 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.Generated;
-import org.hibernate.generator.EventType;
 
 @Entity
 @Table(name = "orders")
@@ -35,8 +33,7 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Generated(event = EventType.INSERT)
-    @Column(name = "order_number", insertable = false, updatable = false)
+    @Column(name = "order_number", nullable = false)
     private Long orderNumber;
 
     @Column(name = "client_name", nullable = false, length = 160)
@@ -59,21 +56,6 @@ public class Order {
 
     @Column(name = "team_name", length = 120)
     private String teamName;
-
-    @Column(name = "material_id")
-    private Long materialId;
-
-    @Column(name = "material_name", nullable = false, length = 120)
-    private String materialName;
-
-    @Column(name = "material_price_per_m2", nullable = false)
-    private BigDecimal materialPricePerM2;
-
-    @Column(name = "material_time_per_m2_min", nullable = false)
-    private BigDecimal materialTimePerM2Minutes;
-
-    @Column(name = "square_meters", nullable = false)
-    private BigDecimal squareMeters;
 
     @Column(name = "granite_enabled", nullable = false)
     private boolean graniteEnabled;
@@ -108,6 +90,10 @@ public class Order {
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
+    private List<OrderMaterial> materials = new ArrayList<>();
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
     private List<OrderFixture> fixtures = new ArrayList<>();
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -119,6 +105,11 @@ public class Order {
 
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    public void addMaterial(OrderMaterial m) {
+        m.setOrder(this);
+        materials.add(m);
+    }
 
     public void addFixture(OrderFixture f) {
         f.setOrder(this);

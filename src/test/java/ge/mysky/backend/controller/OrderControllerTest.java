@@ -35,8 +35,7 @@ class OrderControllerTest extends AbstractIntegrationTest {
         return Map.of(
                 "clientName", "OrderTest-" + sfx,
                 "startAt", "2099-05-05T10:00:00+04:00",
-                "materialId", materialId,
-                "squareMeters", sqm,
+                "materials", java.util.List.of(Map.of("materialId", materialId, "squareMeters", sqm)),
                 "graniteEnabled", false,
                 "fixtures", java.util.List.of(),
                 "addons", java.util.List.of());
