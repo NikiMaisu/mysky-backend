@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 
 public record AddonRequest(
         @NotBlank String name,
-        @NotNull AddonCategory category,
+        AddonCategory category,
         @NotNull @PositiveOrZero BigDecimal cost,
         @NotNull @PositiveOrZero Integer installTimeMinutes) {
 }

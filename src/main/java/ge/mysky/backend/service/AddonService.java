@@ -38,7 +38,7 @@ public class AddonService {
     public AddonInstance create(AddonRequest req) {
         var addon = AddonInstance.builder()
                 .name(req.name().trim())
-                .category(req.category())
+                .category(req.category() != null ? req.category() : AddonCategory.OTHER)
                 .cost(req.cost())
                 .installTimeMinutes(req.installTimeMinutes())
                 .active(true)
@@ -50,7 +50,7 @@ public class AddonService {
     public AddonInstance update(Long id, AddonRequest req) {
         var addon = get(id);
         addon.setName(req.name().trim());
-        addon.setCategory(req.category());
+        addon.setCategory(req.category() != null ? req.category() : AddonCategory.OTHER);
         addon.setCost(req.cost());
         addon.setInstallTimeMinutes(req.installTimeMinutes());
         return addons.save(addon);
