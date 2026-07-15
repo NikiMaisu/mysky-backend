@@ -57,13 +57,22 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderResponse> list(OffsetDateTime from, OffsetDateTime to, Long teamId, OrderStatus status) {
+    public List<OrderResponse> list(OffsetDateTime from, OffsetDateTime to, Long teamId, OrderStatus status, String q) {
         Specification<Order> spec = (root, query, cb) -> {
             var preds = new ArrayList<Predicate>();
             if (from != null) preds.add(cb.greaterThanOrEqualTo(root.get("startAt"), from));
             if (to != null) preds.add(cb.lessThan(root.get("startAt"), to));
             if (teamId != null) preds.add(cb.equal(root.get("teamId"), teamId));
             if (status != null) preds.add(cb.equal(root.get("status"), status));
+            if (q != null && !q.isBlank()) {
+                String like = "%" + q.trim().toLowerCase() + "%";
+                preds.add(cb.or(
+                        cb.like(cb.lower(root.get("clientName")), like),
+                        cb.like(cb.lower(cb.coalesce(root.get("clientPhone"), "")), like),
+                        cb.like(cb.lower(cb.coalesce(root.get("address"), "")), like),
+                        cb.like(cb.lower(cb.coalesce(root.get("notes"), "")), like),
+                        cb.like(cb.function("str", String.class, root.get("orderNumber")), "%" + q.trim() + "%")));
+            }
             return cb.and(preds.toArray(new Predicate[0]));
         };
         return orders.findAll(spec, Sort.by(Sort.Direction.ASC, "startAt")).stream()

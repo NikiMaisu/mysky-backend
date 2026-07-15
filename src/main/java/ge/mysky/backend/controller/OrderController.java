@@ -43,8 +43,9 @@ public class OrderController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
             @RequestParam(required = false) Long teamId,
-            @RequestParam(required = false) OrderStatus status) {
-        return service.list(from, to, teamId, status);
+            @RequestParam(required = false) OrderStatus status,
+            @RequestParam(required = false) String q) {
+        return service.list(from, to, teamId, status, q);
     }
 
     @GetMapping("/export")
@@ -54,8 +55,9 @@ public class OrderController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) OrderStatus status,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "csv") String format) {
-        var orders = service.list(from, to, teamId, status);
+        var orders = service.list(from, to, teamId, status, q);
         boolean xlsx = "xlsx".equalsIgnoreCase(format);
         byte[] body = xlsx ? exportService.xlsx(orders) : exportService.csv(orders);
         var contentType = xlsx
