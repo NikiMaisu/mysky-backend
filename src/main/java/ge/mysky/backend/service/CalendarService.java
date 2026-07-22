@@ -38,8 +38,14 @@ public class CalendarService {
     }
 
     @Transactional(readOnly = true)
-    public List<CalendarOrder> ordersInRange(OffsetDateTime from, OffsetDateTime to) {
-        return orders.findAll(overlap(from, to), Sort.by(Sort.Direction.ASC, "startAt"))
+    public List<CalendarOrder> ordersInRange(OffsetDateTime from, OffsetDateTime to, ge.mysky.backend.domain.User currentUser) {
+        List<Long> ownTeamIds = null;
+        if (currentUser.getRole() == ge.mysky.backend.domain.Role.WORKER) {
+            ownTeamIds = teams.findByMembers_Id(currentUser.getId()).stream()
+                    .map(ge.mysky.backend.domain.Team::getId).toList();
+            if (ownTeamIds.isEmpty()) return List.of();
+        }
+        return orders.findAll(overlap(from, to, ownTeamIds), Sort.by(Sort.Direction.ASC, "startAt"))
                 .stream().map(CalendarOrder::from).toList();
     }
 
@@ -53,7 +59,7 @@ public class CalendarService {
         }
 
         var allTeams = teams.findAllByActiveTrueOrderByNameAsc();
-        var assigned = orders.findAll(overlap(from, to)).stream()
+        var assigned = orders.findAll(overlap(from, to, null)).stream()
                 .filter(o -> o.getTeamId() != null)
                 .toList();
 
@@ -77,12 +83,13 @@ public class CalendarService {
         return result;
     }
 
-    private Specification<Order> overlap(OffsetDateTime from, OffsetDateTime to) {
+    private Specification<Order> overlap(OffsetDateTime from, OffsetDateTime to, List<Long> restrictTeamIds) {
         return (root, query, cb) -> {
             var preds = new ArrayList<Predicate>();
             preds.add(cb.lessThan(root.get("startAt"), to));
             preds.add(cb.greaterThan(root.get("finishAt"), from));
             preds.add(cb.notEqual(root.get("status"), OrderStatus.CANCELLED));
+            if (restrictTeamIds != null) preds.add(root.get("teamId").in(restrictTeamIds));
             return cb.and(preds.toArray(new Predicate[0]));
         };
     }

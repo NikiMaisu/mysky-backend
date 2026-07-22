@@ -57,12 +57,23 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderResponse> list(OffsetDateTime from, OffsetDateTime to, Long teamId, OrderStatus status, String q) {
+    public List<OrderResponse> list(
+            OffsetDateTime from, OffsetDateTime to, Long teamId, OrderStatus status, String q, ge.mysky.backend.domain.User currentUser) {
+        List<Long> ownTeamIds = null;
+        if (currentUser.getRole() == ge.mysky.backend.domain.Role.WORKER) {
+            ownTeamIds = teams.findByMembers_Id(currentUser.getId()).stream().map(ge.mysky.backend.domain.Team::getId).toList();
+            if (ownTeamIds.isEmpty()) return List.of();
+        }
+        final List<Long> scope = ownTeamIds;
         Specification<Order> spec = (root, query, cb) -> {
             var preds = new ArrayList<Predicate>();
             if (from != null) preds.add(cb.greaterThanOrEqualTo(root.get("startAt"), from));
             if (to != null) preds.add(cb.lessThan(root.get("startAt"), to));
-            if (teamId != null) preds.add(cb.equal(root.get("teamId"), teamId));
+            if (scope != null) {
+                preds.add(root.get("teamId").in(scope));
+            } else if (teamId != null) {
+                preds.add(cb.equal(root.get("teamId"), teamId));
+            }
             if (status != null) preds.add(cb.equal(root.get("status"), status));
             if (q != null && !q.isBlank()) {
                 String like = "%" + q.trim().toLowerCase() + "%";

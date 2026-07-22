@@ -4,6 +4,7 @@ import ge.mysky.backend.domain.OrderStatus;
 import ge.mysky.backend.dto.OrderRequest;
 import ge.mysky.backend.dto.OrderResponse;
 import ge.mysky.backend.service.ExportService;
+import ge.mysky.backend.service.MyskyUserDetailsService.MyskyUserDetails;
 import ge.mysky.backend.service.OrderService;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
@@ -15,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,8 +46,9 @@ public class OrderController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) OrderStatus status,
-            @RequestParam(required = false) String q) {
-        return service.list(from, to, teamId, status, q);
+            @RequestParam(required = false) String q,
+            @AuthenticationPrincipal MyskyUserDetails principal) {
+        return service.list(from, to, teamId, status, q, principal.user());
     }
 
     @GetMapping("/export")
@@ -56,8 +59,9 @@ public class OrderController {
             @RequestParam(required = false) Long teamId,
             @RequestParam(required = false) OrderStatus status,
             @RequestParam(required = false) String q,
-            @RequestParam(defaultValue = "csv") String format) {
-        var orders = service.list(from, to, teamId, status, q);
+            @RequestParam(defaultValue = "csv") String format,
+            @AuthenticationPrincipal MyskyUserDetails principal) {
+        var orders = service.list(from, to, teamId, status, q, principal.user());
         boolean xlsx = "xlsx".equalsIgnoreCase(format);
         byte[] body = xlsx ? exportService.xlsx(orders) : exportService.csv(orders);
         var contentType = xlsx
