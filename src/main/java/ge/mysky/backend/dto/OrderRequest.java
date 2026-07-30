@@ -22,6 +22,8 @@ public record OrderRequest(
         @PositiveOrZero BigDecimal flatAddedValue,
         TimeUnit flatAddedUnit,
         boolean finishOverridden,
+        boolean costOverridden,
+        @PositiveOrZero BigDecimal totalCost,
         OrderStatus status,
         String notes,
         @Valid List<MaterialLine> materials,

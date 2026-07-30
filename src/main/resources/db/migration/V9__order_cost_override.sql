@@ -1,0 +1,2 @@
+ALTER TABLE orders
+    ADD COLUMN cost_overridden BOOLEAN NOT NULL DEFAULT FALSE;

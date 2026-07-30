@@ -28,6 +28,7 @@ public record OrderResponse(
         int flatAddedMinutes,
         int totalMinutes,
         BigDecimal totalCost,
+        boolean costOverridden,
         boolean finishOverridden,
         OrderStatus status,
         String notes,
@@ -94,7 +95,7 @@ public record OrderResponse(
                 o.getStartAt(), o.getFinishAt(), o.getTeamId(), o.getTeamName(),
                 o.isGraniteEnabled(), o.getPerimeter(),
                 o.getGranitePricePerMeter(), o.getGraniteTimePerMeterMinutes(),
-                o.getFlatAddedMinutes(), o.getTotalMinutes(), o.getTotalCost(), o.isFinishOverridden(), o.getStatus(), o.getNotes(),
+                o.getFlatAddedMinutes(), o.getTotalMinutes(), o.getTotalCost(), o.isCostOverridden(), o.isFinishOverridden(), o.getStatus(), o.getNotes(),
                 o.getMaterials().stream().map(MaterialLine::from).toList(),
                 o.getFixtures().stream().map(FixtureLine::from).toList(),
                 o.getAddons().stream().map(AddonLine::from).toList());

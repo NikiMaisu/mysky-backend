@@ -223,7 +223,13 @@ public class OrderService {
 
         var totals = calc.compute(order);
         order.setTotalMinutes(totals.minutes());
-        order.setTotalCost(totals.cost());
+        if (req.costOverridden() && req.totalCost() != null) {
+            order.setCostOverridden(true);
+            order.setTotalCost(req.totalCost());
+        } else {
+            order.setCostOverridden(false);
+            order.setTotalCost(totals.cost());
+        }
 
         if (req.finishOverridden() && req.finishAt() != null) {
             order.setFinishOverridden(true);

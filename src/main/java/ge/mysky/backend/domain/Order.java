@@ -81,6 +81,9 @@ public class Order {
     @Column(name = "total_cost", nullable = false)
     private BigDecimal totalCost;
 
+    @Column(name = "cost_overridden", nullable = false)
+    private boolean costOverridden;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private OrderStatus status;
