@@ -1,5 +1,8 @@
 # mysky-backend
 
+[![test](https://github.com/NikiMaisu/mysky-backend/actions/workflows/test.yml/badge.svg)](https://github.com/NikiMaisu/mysky-backend/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/NikiMaisu/mysky-backend/branch/main/graph/badge.svg)](https://codecov.io/gh/NikiMaisu/mysky-backend)
+
 Spring Boot backend for mysky, an internal scheduling and order-tracking system built for a stretch ceiling installation business. It replaces a spreadsheet-based workflow with a proper API for quoting jobs, scheduling crews, and tracking work through to completion.
 
 ## Features
