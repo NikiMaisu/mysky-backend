@@ -103,4 +103,157 @@ class OrderControllerTest extends AbstractIntegrationTest {
         mvc.perform(authed(post("/orders"), admin, body))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void createWithFixturesAndAddonsIncludesThemInTotals() throws Exception {
+        var admin = adminToken();
+        var materialId = createMaterial(admin);
+
+        var fixtureRes = mvc.perform(authed(post("/fixtures"), admin,
+                        Map.of("name", "Spotlight-" + sfx, "unit", "PER_UNIT", "cost", 50, "installTimeMinutes", 10)))
+                .andExpect(status().isCreated()).andReturn();
+        long fixtureId = json.readTree(fixtureRes.getResponse().getContentAsString()).get("id").asLong();
+
+        var addonRes = mvc.perform(authed(post("/addons"), admin,
+                        Map.of("name", "Blinds-" + sfx, "category", "BLINDS_RAILING", "cost", 30, "installTimeMinutes", 15)))
+                .andExpect(status().isCreated()).andReturn();
+        long addonId = json.readTree(addonRes.getResponse().getContentAsString()).get("id").asLong();
+
+        var body = new java.util.HashMap<String, Object>(orderBody(materialId, 4));
+        body.put("fixtures", java.util.List.of(Map.of("fixtureId", fixtureId, "quantity", 2)));
+        body.put("addons", java.util.List.of(Map.of("addonId", addonId, "quantity", 1)));
+
+        mvc.perform(authed(post("/orders"), admin, body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.fixtures[0].name").value("Spotlight-" + sfx))
+                .andExpect(jsonPath("$.addons[0].name").value("Blinds-" + sfx))
+                // 20 (material) + 20 (2x fixture) + 15 (1x addon)
+                .andExpect(jsonPath("$.totalMinutes").value(55));
+    }
+
+    @Test
+    void createWithCustomPriceOverridesCalculatedCost() throws Exception {
+        var admin = adminToken();
+        var materialId = createMaterial(admin);
+
+        var body = new java.util.HashMap<String, Object>(orderBody(materialId, 4));
+        body.put("costOverridden", true);
+        body.put("totalCost", 999);
+
+        mvc.perform(authed(post("/orders"), admin, body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.costOverridden").value(true))
+                .andExpect(jsonPath("$.totalCost").value(999));
+    }
+
+    @Test
+    void createWithManualOrderNumberRejectsDuplicate() throws Exception {
+        var admin = adminToken();
+        var materialId = createMaterial(admin);
+        long manualNumber = 900000L + Long.parseLong(sfx.substring(sfx.length() - 5));
+
+        var body = new java.util.HashMap<String, Object>(orderBody(materialId, 4));
+        body.put("orderNumber", manualNumber);
+
+        mvc.perform(authed(post("/orders"), admin, body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.orderNumber").value(manualNumber));
+
+        mvc.perform(authed(post("/orders"), admin, body))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void listSupportsSearchStatusAndTeamFilters() throws Exception {
+        var admin = adminToken();
+        var materialId = createMaterial(admin);
+        var client = "Findme-" + sfx;
+
+        var body = new java.util.HashMap<String, Object>(orderBody(materialId, 4));
+        body.put("clientName", client);
+        var createRes = mvc.perform(authed(post("/orders"), admin, body))
+                .andExpect(status().isCreated()).andReturn();
+        long id = json.readTree(createRes.getResponse().getContentAsString()).get("id").asLong();
+
+        mvc.perform(get("/orders?q=" + client).header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(id));
+
+        mvc.perform(get("/orders?status=QUOTED&q=" + client).header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(id));
+
+        mvc.perform(get("/orders?status=DONE&q=" + client).header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void workersOnlySeeOrdersForTheirOwnTeam() throws Exception {
+        var admin = adminToken();
+        var materialId = createMaterial(admin);
+
+        long teamId = json.readTree(mvc.perform(authed(post("/teams"), admin,
+                        Map.of("name", "OrderTeam-" + sfx, "memberIds", java.util.List.of())))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+
+        var workerEmail = "orderworker-" + sfx + "@mysky.ge";
+        long workerId = json.readTree(mvc.perform(authed(post("/workers"), admin,
+                        Map.of("name", "OrderWorker-" + sfx, "email", workerEmail, "password", "password1")))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+
+        mvc.perform(authed(post("/teams/" + teamId + "/members"), admin, Map.of("workerId", workerId)))
+                .andExpect(status().isOk());
+
+        var body = new java.util.HashMap<String, Object>(orderBody(materialId, 4));
+        body.put("teamId", teamId);
+        body.put("clientName", "Scoped-" + sfx);
+        mvc.perform(authed(post("/orders"), admin, body))
+                .andExpect(status().isCreated());
+
+        var workerToken = tokenFor(workerEmail, "password1");
+        mvc.perform(get("/orders?q=Scoped-" + sfx).header("Authorization", "Bearer " + workerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].clientName").value("Scoped-" + sfx));
+
+        var otherWorkerEmail = "otherworker-" + sfx + "@mysky.ge";
+        mvc.perform(authed(post("/workers"), admin,
+                        Map.of("name", "OtherWorker-" + sfx, "email", otherWorkerEmail, "password", "password1")))
+                .andExpect(status().isCreated());
+        var otherWorkerToken = tokenFor(otherWorkerEmail, "password1");
+
+        mvc.perform(get("/orders?q=Scoped-" + sfx).header("Authorization", "Bearer " + otherWorkerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void adminCanExportOrdersAsCsvAndXlsx() throws Exception {
+        var admin = adminToken();
+        var materialId = createMaterial(admin);
+        mvc.perform(authed(post("/orders"), admin, orderBody(materialId, 4)))
+                .andExpect(status().isCreated());
+
+        mvc.perform(get("/orders/export?format=csv").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Content-Disposition", org.hamcrest.Matchers.containsString(".csv")));
+
+        mvc.perform(get("/orders/export?format=xlsx").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Content-Disposition", org.hamcrest.Matchers.containsString(".xlsx")));
+    }
+
+    @Test
+    void exportRequiresAdminRole() throws Exception {
+        var admin = adminToken();
+        mvc.perform(authed(post("/workers"), admin,
+                        Map.of("name", "ExportW-" + sfx, "email", "exportw-" + sfx + "@mysky.ge", "password", "password1")))
+                .andExpect(status().isCreated());
+        var workerToken = tokenFor("exportw-" + sfx + "@mysky.ge", "password1");
+
+        mvc.perform(get("/orders/export").header("Authorization", "Bearer " + workerToken))
+                .andExpect(status().isForbidden());
+    }
 }
