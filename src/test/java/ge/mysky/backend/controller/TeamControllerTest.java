@@ -73,4 +73,37 @@ class TeamControllerTest extends AbstractIntegrationTest {
                         .content(json.writeValueAsString(Map.of("name", "x", "memberIds", List.of()))))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void teamResponseIncludesScheduleWhenSet() throws Exception {
+        var admin = adminToken();
+        var schedule = Map.of("days", new boolean[]{true, true, true, true, true, false, false}, "start", "09:00", "end", "17:00");
+
+        var res = mvc.perform(authed(post("/teams"), admin,
+                        Map.of("name", "ScheduledTeam-" + sfx, "memberIds", List.of(), "schedule", schedule)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.schedule.start").value("09:00"))
+                .andExpect(jsonPath("$.schedule.end").value("17:00"))
+                .andReturn();
+        var body = json.readTree(res.getResponse().getContentAsString());
+        org.assertj.core.api.Assertions.assertThat(body.get("schedule").get("days").get(0).asBoolean()).isTrue();
+    }
+
+    @Test
+    void teamResponseSortsMembersByName() throws Exception {
+        var admin = adminToken();
+
+        long zWorker = json.readTree(mvc.perform(authed(post("/workers"), admin,
+                        Map.of("name", "Zurab-" + sfx, "email", "zurab" + sfx + "@mysky.ge", "password", "password1")))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+        long aWorker = json.readTree(mvc.perform(authed(post("/workers"), admin,
+                        Map.of("name", "Ana-" + sfx, "email", "ana" + sfx + "@mysky.ge", "password", "password1")))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+
+        mvc.perform(authed(post("/teams"), admin,
+                        Map.of("name", "SortedTeam-" + sfx, "memberIds", List.of(zWorker, aWorker))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.members[0].id").value(aWorker))
+                .andExpect(jsonPath("$.members[1].id").value(zWorker));
+    }
 }

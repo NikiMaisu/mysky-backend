@@ -256,4 +256,124 @@ class OrderControllerTest extends AbstractIntegrationTest {
         mvc.perform(get("/orders/export").header("Authorization", "Bearer " + workerToken))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    void manualFinishOverrideSkipsScheduleCalculation() throws Exception {
+        var admin = adminToken();
+        var materialId = createMaterial(admin);
+
+        var body = new java.util.HashMap<String, Object>(orderBody(materialId, 4));
+        body.put("finishOverridden", true);
+        body.put("finishAt", "2099-05-06T18:00:00+04:00");
+
+        mvc.perform(authed(post("/orders"), admin, body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.finishOverridden").value(true))
+                .andExpect(jsonPath("$.finishAt").value(org.hamcrest.Matchers.startsWith("2099-05-06T14:00")));
+    }
+
+    @Test
+    void costOverriddenWithoutTotalCostFallsBackToCalculatedCost() throws Exception {
+        var admin = adminToken();
+        var materialId = createMaterial(admin);
+
+        var body = new java.util.HashMap<String, Object>(orderBody(materialId, 4));
+        body.put("costOverridden", true);
+        // totalCost intentionally omitted
+
+        mvc.perform(authed(post("/orders"), admin, body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.costOverridden").value(false))
+                .andExpect(jsonPath("$.totalCost").value(40));
+    }
+
+    @Test
+    void flatAddedValueSupportsHoursAndDaysUnits() throws Exception {
+        var admin = adminToken();
+        var materialId = createMaterial(admin);
+
+        var hoursBody = new java.util.HashMap<String, Object>(orderBody(materialId, 4));
+        hoursBody.put("flatAddedValue", 2);
+        hoursBody.put("flatAddedUnit", "HOURS");
+        // 20 (material) + 120 (2h flat) = 140
+        mvc.perform(authed(post("/orders"), admin, hoursBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.totalMinutes").value(140));
+
+        var daysBody = new java.util.HashMap<String, Object>(orderBody(materialId, 4));
+        daysBody.put("flatAddedValue", 1);
+        daysBody.put("flatAddedUnit", "DAYS");
+        mvc.perform(authed(post("/orders"), admin, daysBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.totalMinutes").isNumber());
+    }
+
+    @Test
+    void createRejectsUnknownTeamMaterialFixtureOrAddon() throws Exception {
+        var admin = adminToken();
+        var materialId = createMaterial(admin);
+
+        var badTeam = new java.util.HashMap<String, Object>(orderBody(materialId, 4));
+        badTeam.put("teamId", 999999L);
+        mvc.perform(authed(post("/orders"), admin, badTeam))
+                .andExpect(status().isNotFound());
+
+        var badMaterial = new java.util.HashMap<String, Object>(orderBody(materialId, 4));
+        badMaterial.put("materials", java.util.List.of(Map.of("materialId", 999999L, "squareMeters", 4)));
+        mvc.perform(authed(post("/orders"), admin, badMaterial))
+                .andExpect(status().isNotFound());
+
+        var badFixture = new java.util.HashMap<String, Object>(orderBody(materialId, 4));
+        badFixture.put("fixtures", java.util.List.of(Map.of("fixtureId", 999999L, "quantity", 1)));
+        mvc.perform(authed(post("/orders"), admin, badFixture))
+                .andExpect(status().isNotFound());
+
+        var badAddon = new java.util.HashMap<String, Object>(orderBody(materialId, 4));
+        badAddon.put("addons", java.util.List.of(Map.of("addonId", 999999L, "quantity", 1)));
+        mvc.perform(authed(post("/orders"), admin, badAddon))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void createAcceptsExplicitStatusAndBlanksOptionalFields() throws Exception {
+        var admin = adminToken();
+        var materialId = createMaterial(admin);
+
+        var body = new java.util.HashMap<String, Object>(orderBody(materialId, 4));
+        body.put("status", "SCHEDULED");
+        body.put("clientPhone", "");
+        body.put("address", "");
+        body.put("notes", "");
+
+        var res = mvc.perform(authed(post("/orders"), admin, body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("SCHEDULED"))
+                .andReturn();
+        var order = json.readTree(res.getResponse().getContentAsString());
+        assertThatFieldIsAbsentOrNull(order, "clientPhone");
+        assertThatFieldIsAbsentOrNull(order, "address");
+        assertThatFieldIsAbsentOrNull(order, "notes");
+    }
+
+    private void assertThatFieldIsAbsentOrNull(com.fasterxml.jackson.databind.JsonNode node, String field) {
+        org.assertj.core.api.Assertions.assertThat(node.get(field) == null || node.get(field).isNull()).isTrue();
+    }
+
+    @Test
+    void updateCanChangeOrderNumberToAnUnusedOne() throws Exception {
+        var admin = adminToken();
+        var materialId = createMaterial(admin);
+        long newNumber = 800000L + Long.parseLong(sfx.substring(sfx.length() - 5));
+
+        var createRes = mvc.perform(authed(post("/orders"), admin, orderBody(materialId, 4)))
+                .andExpect(status().isCreated()).andReturn();
+        long id = json.readTree(createRes.getResponse().getContentAsString()).get("id").asLong();
+
+        var body = new java.util.HashMap<String, Object>(orderBody(materialId, 4));
+        body.put("orderNumber", newNumber);
+
+        mvc.perform(authed(put("/orders/" + id), admin, body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderNumber").value(newNumber));
+    }
 }
